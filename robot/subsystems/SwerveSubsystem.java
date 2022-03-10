@@ -2,8 +2,10 @@ package frc.robot.subsystems;
 
 import com.kauailabs.navx.frc.AHRS;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.SerialPort;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -50,6 +52,7 @@ public class SwerveSubsystem extends SubsystemBase {                        //Cr
     private AHRS gyro = new AHRS(SerialPort.Port.kUSB);
     //private AHRS gyro = new AHRS(I2C.Port.kMXP);
     //private ADXRS450_Gyro gyro = new ADXRS450_Gyro(SPI.Port.kOnboardCS0);
+    private final SwerveDriveOdometry odometer = new SwerveDriveOdometry(DriveConstants.kDriveKinematics, new Rotation2d(0));
 
     public SwerveSubsystem() {                     // zero the gryo heading
         new Thread(() -> {                         //new thread so that the gryo can calibrate before zeroing the heading
@@ -66,7 +69,7 @@ public class SwerveSubsystem extends SubsystemBase {                        //Cr
         gyro.reset();
     }
 
-    public double getHeading(){                                      // get the gyro heading in degrees
+    public double getHeading() {                                      // get the gyro heading in degrees
         return Math.IEEEremainder(gyro.getAngle(), 360);
     }
 
@@ -74,9 +77,19 @@ public class SwerveSubsystem extends SubsystemBase {                        //Cr
         return Rotation2d.fromDegrees(getHeading());
     }
 
+    public Pose2d getPose(){
+        return odometer.getPoseMeters();
+    }
+
+    public void resetOdometry(Pose2d pose) {
+        odometer.resetPosition(pose, getRotation2d());
+    }
+
     @Override
     public void periodic(){                                         // code torun every tick
+        odometer.update(getRotation2d(), frontLeft.getState(), frontRight.getState(), backLeft.getState(), backRight.getState());
         SmartDashboard.putNumber("Robot Heading", getHeading());    //display the heading
+        SmartDashboard.putString("Robot Location", getPose().getTranslation().toString());
     }
 
     public void stopModules() {                                     //stop all of the swerve modules
